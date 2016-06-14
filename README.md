@@ -23,6 +23,8 @@ A task is simply defined as a small piece of work with a description and can exi
 
 In Agile, we have the concept of a Minimum Viable Product--or MVP. We'd like to define the MVP for this project as successful completion and testing of the **first and second user stories**, and **two additional user stories** of your choice. So, in addition to completing the first and second stories pick two that look interesting to you and implement them! If you can implement extra stuff like additional stories or some unique features that make your application more usable or beautiful, feel free--that's bonus points!
 
+Make sure that you identify which user stories you're working on in your Git workflow. You may do this via a mechanism like [GitHub flow](https://guides.github.com/introduction/flow/), feature branches, or something as simple as check-in comments.
+
 ### Architecture
 
 In order to build this solution, select a front end framework and implement the HTML, CSS, and JavaScript required. Don't spend too much time stressing on the form of your application at the outset; you should come back to that after you have some basic things working.
