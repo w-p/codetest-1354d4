@@ -21,7 +21,7 @@ A task is simply defined as a small piece of work with a description and can exi
 
 ### MVP
 
-In Agile, we have the concept of a Minimum Viable Product--or MVP. We'd like to define the MVP for this project as successful completion and testing of the *first and second user stories*, and *two additional user stories* of your choice. So, in addition to completing the first and second stories pick two that look interesting to you and implement them! If you can implement extra stuff like additional stories or some unique features that make your application more usable or beautiful, feel free--that's bonus points!
+In Agile, we have the concept of a Minimum Viable Product--or MVP. We'd like to define the MVP for this project as successful completion and testing of the **first and second user stories**, and **two additional user stories** of your choice. So, in addition to completing the first and second stories pick two that look interesting to you and implement them! If you can implement extra stuff like additional stories or some unique features that make your application more usable or beautiful, feel free--that's bonus points!
 
 ### Architecture
 
