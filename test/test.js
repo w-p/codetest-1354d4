@@ -1,5 +1,7 @@
 
 
+process.env.NODE_ENV = 'test';
+
 require('./nts.js');
 require('./nts.database.js');
 require('./backend.js');

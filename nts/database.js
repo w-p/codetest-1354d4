@@ -12,7 +12,7 @@ nts.database = {};
     this.model_factory = function (fields, data_dict) {
         var result = {};
         for (field of fields) {
-            result[field] = data_dict[field];
+            result[field] = data_dict[field] || null;
         }
         result.id = uuid.v4();
         return result;

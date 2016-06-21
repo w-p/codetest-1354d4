@@ -1,7 +1,9 @@
 
 
+process.env.NODE_ENV = 'test';
+
 var chai = require('chai');
-var assert = chai.assert;
+var expect = chai.expect;
 chai.use(require('chai-http'));
 var fixtures = require('./fixtures.js');
 
@@ -11,168 +13,121 @@ var config = require('../config.js');
 var backend = require('../backend');
 var endpoints = backend.endpoints;
 
+
 describe('backend.endpoints', function () {
 
     var url = `http://${ config.host }:${ config.port }`
     var user_id = null;
+    var task_id = null;
+    var login = {
+        email: fixtures.user_data.email,
+        password: fixtures.user_data.password
+    };
+    var agent = chai.request.agent(app.base_app);
 
-    describe(`${ url }/login`, function () {
+    describe('Tests the lifecycle of a user and endpoints.', function () {
+
         it(
-            'logs a user in with email and password',
-            function (done) {
-                chai.request(url)
-                    .put(endpoints.users.put.path)
+            'It creates a user',
+            function () {
+                return agent.put(endpoints.users.put.path)
                     .send(fixtures.user_data)
-                    .end(function (err, res) {
-                        chai.request(url)
-                            .post(endpoints.login.post.path)
-                            .send({
-                                email: fixtures.user_data.email,
-                                password: fixtures.user_data.password
-                            })
-                            .end(function (err, res) {
-                                assert(!err, JSON.stringify(res.error));
-                                var status = res.status;
-                                var payload = res.text;
-                                assert(status === 200, `status: ${ status } != 200`);
-                                assert(payload.length === 36);
-                                done();
-                            });
+                    .then(function (res) {
+                        expect(res).to.have.status(200);
+                        var ident = JSON.parse(res.text);
+                        expect(ident.id.length).to.equal(36);
+                        user_id = ident.id; // storing for later.
                     });
             }
-        )
-    });
+        );
 
-    describe(`${ url }/users`, function () {
         it(
-            'creates (put) a user',
-            function (done) {
-                chai.request(url)
-                    .put(endpoints.users.put.path)
-                    .send(fixtures.user_data)
-                    .end(function (err, res) {
-                        assert(!err, JSON.stringify(res.error));
-                        var status = res.status;
-                        var payload = res.text;
-                        assert(status === 200, `status: ${ status } != 200`);
-
-                        user_id = payload;
-                        assert(user_id.length == 36, `uuid: got ${ user_id }`);
-                        done();
+            'Then retrieves the user by id',
+            function () {
+                return agent.get(endpoints.users.get.path.split(':')[0] + user_id)
+                    .then(function (res) {
+                        expect(res).to.have.status(200);
+                        var user = JSON.parse(res.text);
+                        expect(user.id).to.equal(user_id);
+                        expect(user.name).to.equal(fixtures.user_data.name);
+                        expect(user.bad).to.be.undefined;
                     });
             }
         );
         it(
-            'retrieves (get) as user by id',
-            function (done) {
-                chai.request(url)
-                    .get(endpoints.users.get.path.split(':')[0] + user_id)
-                    .end(function (err, res) {
-                        assert(!err, JSON.stringify(res.error));
-                        var status = res.status;
-                        var payload = res.text;
-                        var data = fixtures.user_data;
-                        assert(status === 200, `status: ${ status } != 200`);
-
-                        var user = JSON.parse(payload);
-                        assert(user.id === user_id, `id: ${ user.id } != ${ user_id }`);
-                        assert(user.name === data.name, `name: ${ user.name } === ${ data.name }`);
-                        assert(user.bad === undefined, `unexpected data: user[bad] == ${ user.bad }`);
-                        done();
-                    });
+            'Then logs a user in, with email and password',
+            function () {
+                return agent.post(endpoints.login.post.path)
+                    .send(login)
+                    .then(function (res) {
+                        expect(res).to.have.status(200);
+                        expect(res).to.have.cookie('id'); // stores cookie for future requests...
+                        var auth = JSON.parse(res.text);
+                        expect(auth.id).to.be.a('string');
+                        expect(auth.id.length).to.equal(36);
+                    })
             }
         );
-        it(
-            'deletes (delete) a user by id',
-            function (done) {
-                chai.request(url)
-                    .delete(endpoints.users.delete.path.split(':')[0] + user_id)
-                    .end(function (err, res) {
-                        assert(!err, JSON.stringify(res.error));
-                        var status = res.status;
-                        var payload = res.text;
-                        assert(status === 200, `status: ${ status } != 200`);
-                        assert(payload === 'ok', `response: ${ payload } != 'ok'`);
 
-                        chai.request(url)
-                            .get(endpoints.users.get.path.split(':')[0] + user_id)
-                            .end(function (err, res) {
-                                assert(!err, JSON.stringify(res.error));
-                                var status = res.status;
-                                var payload = res.text;
-                                assert(status === 200, `status: ${ status } != 200`);
-                                assert(payload.length === 0, `response: ${ res.payload } should be empty`);
-                                done();
-                            });
-                    });
-            }
-        )
-    });
-
-    describe(`${ url }/tasks`, function () {
         it(
-            'creates (put) a task',
-            function (done) {
-                chai.request(url)
-                    .put(endpoints.tasks.put.path)
+            'It creates a task',
+            function () {
+                return agent.put(endpoints.tasks.put.path)
                     .send(fixtures.task_data)
-                    .end(function (err, res) {
-                        assert(!err, JSON.stringify(res.error));
-                        var status = res.status;
-                        var payload = res.text;
-                        assert(status === 200, `status: ${ status } != 200`);
-
-                        task_id = payload;
-                        assert(task_id.length == 36, `uuid: got ${ task_id }`);
-                        done();
+                    .then(function (res) {
+                        expect(res).to.have.status(200);
+                        var ident = JSON.parse(res.text);
+                        expect(ident.id.length).to.equal(36);
+                        task_id = ident.id; // storing for later
                     });
             }
         );
         it(
-            'retrieves (get) as task by id',
-            function (done) {
-                chai.request(url)
-                    .get(endpoints.tasks.get.path.split(':')[0] + task_id)
-                    .end(function (err, res) {
-                        assert(!err, JSON.stringify(res.error));
-                        var status = res.status;
-                        var payload = res.text;
-                        var data = fixtures.task_data;
-                        assert(status === 200, `status: ${ status } != 200`);
-
-                        var task = JSON.parse(payload);
-                        assert(task.id === task_id, `id: ${ task.id } != ${ task_id }`);
-                        assert(task.name === data.name, `name: ${ task.name } === ${ data.name }`);
-                        assert(task.bad === undefined, `unexpected data: task[bad] == ${ task.bad }`);
-                        done();
+            'Then retrieves the task by id',
+            function () {
+                return agent.get(endpoints.tasks.get.path.split(':')[0] + task_id)
+                    .then(function (res) {
+                        expect(res).to.have.status(200);
+                        var task = JSON.parse(res.text);
+                        expect(task.id).to.equal(task_id);
+                        expect(task.name).to.equal(fixtures.task_data.name);
+                        expect(task.bad).to.be.undefined;
                     });
             }
         );
         it(
-            'deletes (delete) a task by id',
-            function (done) {
-                chai.request(url)
-                    .delete(endpoints.tasks.delete.path.split(':')[0] + task_id)
-                    .end(function (err, res) {
-                        assert(!err, JSON.stringify(res.error));
-                        var status = res.status;
-                        var payload = res.text;
-                        assert(status === 200, `status: ${ status } != 200`);
-                        assert(payload === 'ok', `response: ${ payload } != 'ok'`);
-
-                        chai.request(url)
-                            .get(endpoints.tasks.get.path.split(':')[0] + task_id)
-                            .end(function (err, res) {
-                                assert(!err, JSON.stringify(res.error));
-                                var status = res.status;
-                                var payload = res.text;
-                                assert(status === 200, `status: ${ status } != 200`);
-                                assert(payload.length === 0, `response: ${ res.payload } should be empty`);
-                                done();
-                            });
+            'Then deletes the task by id',
+            function () {
+                return agent.delete(endpoints.tasks.delete.path.split(':')[0] + task_id)
+                    .then(function (res) {
+                        expect(res).to.have.status(200);
+                        expect(res.text).to.equal('ok');
                     });
             }
-        )
+        );
+
+        it(
+            'It deletes the user by id',
+            function () {
+                return agent.delete(endpoints.users.delete.path.split(':')[0] + user_id)
+                    .then(function (res) {
+                        expect(res).to.have.status(200);
+                        expect(res.text).to.equal('ok');
+                    });
+            }
+        );
+
+        it(
+            'Then logs the user out',
+            function () {
+                agent.post(endpoints.logout.post.path)
+                    .then(function (res) {
+                        expect(res).to.have.status(200);
+                        expect(res).to.not.have.cookie('id');
+                        expect(res.text).to.equal('ok');
+                    });
+            }
+        );
+
     });
-
 });

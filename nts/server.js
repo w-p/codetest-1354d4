@@ -3,6 +3,7 @@
 const http = require('http');
 const express = require('express');
 const bodyparser = require('body-parser');
+const cookieparser = require('cookie-parser');
 
 
 var nts = require('.');
@@ -23,6 +24,8 @@ nts.server = {};
         'delete'
     ];
 
+    this.base_app = app;
+    app.use(cookieparser());
     app.use(bodyparser.json());
     app.use(function (req, res, next) {
         req.db = db;

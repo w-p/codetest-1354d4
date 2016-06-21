@@ -1,64 +1,53 @@
 
 
+process.env.NODE_ENV = 'test';
+
 var chai = require('chai');
-var assert = chai.assert;
+var expect = chai.expect;
+
+
 var fixtures = require('./fixtures.js');
-
-
 var nts = require('../nts');
 var backend = require('../backend');
 
 describe('backend.models', function () {
-    describe('user model', function () {
+
+    var user_id = undefined;
+
+    describe('backend.models.user', function () {
         it(
-            'creates an object from the user model',
+            'It creates an object from the user model',
             function (done) {
                 var user_data = fixtures.user_data;
                 var user = new backend.models.User(user_data);
-                assert(
-                    user.id !== undefined,
-                    `user id is ${ user.id }, should be undefined`
-                );
+                expect(user.id).not.to.be.undefined;
 
                 for (key of Object.keys(user)) {
                     if (key !== 'id' && key !== 'type') {
-                        assert(
-                            user[key] === user_data[key],
-                            `key ${ key }: ${ user[key] } != ${ user_data[key] }`
-                        )
+                        expect(user[key]).to.equal(user_data[key]);
                     }
                 }
-                assert(
-                    user['bad'] === undefined,
-                    `user should not have ${ user['bad'] }`
-                )
+                expect(user['bad']).to.be.undefined;
                 done();
             }
         )
     });
-    describe('task model', function () {
+
+    describe('backend.models.task', function () {
         it(
-            'creates an object from the task model',
+            'It creates an object from the task model',
             function (done) {
                 var task_data = fixtures.task_data;
+                task_data.owner = user_id;
                 var task = new backend.models.Task(task_data);
-                assert(
-                    task.id !== undefined,
-                    `task id is ${ task.id }, should be undefined`
-                );
+                expect(task.id).not.to.be.undefined;
 
                 for (key of Object.keys(task)) {
-                    if (key !== 'id' && key !== 'type') {
-                        assert(
-                            task[key] === task_data[key],
-                            `${ task[key] } != ${ task_data[key] }`
-                        )
+                    if (key !== 'id' && key !== 'type' && key !== 'owner') {
+                        expect(task[key]).to.equal(task_data[key])
                     }
                 }
-                assert(
-                    task['bad'] === undefined,
-                    `task should not have ${ task['bad'] }`
-                )
+                expect(task['bad']).to.be.undefined;
                 done();
             }
         )

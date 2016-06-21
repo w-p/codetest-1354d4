@@ -23,6 +23,7 @@ backend.models = {};
     this.Task = function (data_dict) {
         var fields = [
             'name',
+            'owner',
             'status',
             'priority',
             'visibility',
