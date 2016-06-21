@@ -28,7 +28,7 @@ nts.database = {};
         };
 
         this.find = function (query_dict) {
-            return _.find(this.all(), query_dict);
+            return _.filter(this.all(), query_dict);
         };
 
         this.get = function (id) {

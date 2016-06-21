@@ -1,5 +1,8 @@
 
 
+const _ = require('lodash');
+
+
 var backend = require('.');
 backend.endpoints = {};
 
@@ -16,6 +19,11 @@ backend.endpoints = {};
                         .send('The requested account does not exist.');
                     return;
                 }
+                if (user.length > 1) {
+                    res.status(500)
+                        .send('More than one account has the same unique identifier.')
+                }
+                user = user[0];
                 if (user.password !== auth.password) {
                     res.status(401)
                         .send('Authentication failed, incorrect password.');
@@ -41,8 +49,16 @@ backend.endpoints = {};
 
     this.users = {
         get: {
-            path: '/users/:id',
+            path: '/users/:id?',
             handler: function (req, res) {
+                if (!req.params.id) {
+                    var users = req.db.find({type: 'user'});
+                    users = _.map(users, function (v) {
+                        return {id: v.id, name: v.name};
+                    });
+                    res.send(JSON.stringify(users));
+                    return;
+                }
                 var user = req.db.get(req.params.id);
                 if (!user) {
                     res.status(404)
@@ -64,7 +80,13 @@ backend.endpoints = {};
             handler: function (req, res) {
                 var data = req.body;
                 var user = req.db.find({email: data.email});
-                if (user) {
+                if (user.length > 0) {
+                    if (user.length > 1) {
+                        res.status(500)
+                            .send('More than one user has the same unique identifier.');
+                        return;
+                    }
+                    user = user[0];
                     if (user.name === data.name) {
                         res.status(400)
                             .send('An account with that name already exists.');
@@ -76,10 +98,7 @@ backend.endpoints = {};
                         return;
                     }
                 }
-                console.log(user);
-                console.log(data);
                 user = new backend.models.User(data);
-                console.log(user);
                 req.db.put(user);
                 res.send(JSON.stringify(
                     {
@@ -133,8 +152,16 @@ backend.endpoints = {};
 
     this.tasks = {
         get: {
-            path: '/tasks/:id',
+            path: '/tasks/:id?',
             handler: function (req, res) {
+                if (!req.params.id) {
+                    var tasks = req.db.find({type: 'task'});
+                    tasks = _.map(tasks, function (v) {
+                        return {id: v.id, name: v.name};
+                    });
+                    res.send(JSON.stringify(tasks));
+                    return;
+                }
                 var task = req.db.get(req.params.id);
                 var user = req.db.get(req.cookies.id);
                 if (!task) {
@@ -155,7 +182,13 @@ backend.endpoints = {};
             handler: function (req, res) {
                 var data = req.body;
                 var task = req.db.find({name: data.name});
-                if (task) {
+                if (task.length > 0) {
+                    if (task.length > 1) {
+                        res.status(500)
+                            .send('More than one task has the same unique identifier.');
+                        return;
+                    }
+                    task = task[0];
                     res.status(400)
                         .send('A task with that name already exists.');
                     return;
