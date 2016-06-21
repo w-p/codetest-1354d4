@@ -1,5 +1,7 @@
 
 
+process.env.NODE_ENV = 'test';
+
 
 var fixtures = module.exports = {
 
@@ -26,6 +28,7 @@ var fixtures = module.exports = {
 
     task_data: {
         name: 'Write unit tests',
+        owner: null,
         status: 'open',
         priority: 10,
         visibility: 'public',
