@@ -20,6 +20,7 @@ app.io = {};
         };
         if (payload) {
             opts.headers = {
+                'Accept': '*/*',
                 'Content-Type': 'application/json'
             }
             opts.body = JSON.stringify(payload);
@@ -30,9 +31,11 @@ app.io = {};
     function make_fetch (method, url, payload, cb, err_cb) {
         fetch(url, get_options(method, payload))
             .then(function (res) {
+                return res.text() || res.json();
+            })
+            .then(function (data) {
                 if (cb) {
-                    console.log(res);
-                    cb(res);
+                    cb(data);
                 }
             })
             .catch(function (err) {
