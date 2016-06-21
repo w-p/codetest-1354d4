@@ -1,0 +1,37 @@
+{
+  "name": "note-to-self",
+  "version": "0.1.0",
+  "description": "A task tracker.",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "test": "istanbul test _mocha"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/w-p/codetest-1354d4.git"
+  },
+  "keywords": [
+    "todo",
+    "task",
+    "tracker"
+  ],
+  "author": "William Palmer",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/w-p/codetest-1354d4/issues"
+  },
+  "dependencies": {
+    "body-parser": "1.15.2",
+    "node-uuid": "1.4.7",
+    "express": "4.14.0",
+    "lodash": "4.13.1",
+    "bunyan": "1.8.1"
+  },
+  "devDependencies": {
+    "chai-http": "3.0.0",
+    "istanbul": "0.4.4",
+    "mocha": "2.5.3",
+    "chai": "3.5.0"
+  }
+}

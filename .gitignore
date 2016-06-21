@@ -1,0 +1,5 @@
+*.log
+*.old
+coverage/
+frontend/
+node_modules/
