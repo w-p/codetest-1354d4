@@ -54,6 +54,19 @@ describe('backend.endpoints', function () {
                     });
             }
         );
+
+        it (
+            'Then retrieves all users',
+            function () {
+                return agent.get(endpoints.users.get.path.split(':')[0])
+                    .then(function (res) {
+                        expect(res).to.have.status(200);
+                        var users = JSON.parse(res.text);
+                        expect(users.length).to.equal(1);
+                    });
+            }
+        );
+
         it(
             'Then logs a user in, with email and password',
             function () {
@@ -82,6 +95,7 @@ describe('backend.endpoints', function () {
                     });
             }
         );
+
         it(
             'Then retrieves the task by id',
             function () {
@@ -95,6 +109,19 @@ describe('backend.endpoints', function () {
                     });
             }
         );
+
+        it (
+            'Then retrieves all tasks',
+            function () {
+                return agent.get(endpoints.tasks.get.path.split(':')[0])
+                    .then(function (res) {
+                        expect(res).to.have.status(200);
+                        var tasks = JSON.parse(res.text);
+                        expect(tasks.length).to.equal(1);
+                    });
+            }
+        );
+
         it(
             'Then deletes the task by id',
             function () {

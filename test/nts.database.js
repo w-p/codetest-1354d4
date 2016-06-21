@@ -33,7 +33,7 @@ describe('nts.database', function () {
     );
 
     it(
-        'It stores a factory object, then retrieves and deletes it by id',
+        'It stores a factory object, saves it to the database, then retrieves and deletes it by id',
         function (done) {
             var fields = fixtures.database_fields;
             var data = fixtures.database_data;
@@ -42,6 +42,9 @@ describe('nts.database', function () {
 
             db.put(result);
             var db_results = db.all();
+            expect(db_results.length).to.equal(1);
+
+            var db_results = db.find({foo: data['foo']});
             expect(db_results.length).to.equal(1);
 
             var db_result = db.find({foo: data.foo});
