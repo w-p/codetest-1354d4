@@ -76,7 +76,10 @@ backend.endpoints = {};
                         return;
                     }
                 }
+                console.log(user);
+                console.log(data);
                 user = new backend.models.User(data);
+                console.log(user);
                 req.db.put(user);
                 res.send(JSON.stringify(
                     {

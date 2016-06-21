@@ -26,7 +26,7 @@ nts.server = {};
 
     this.base_app = app;
     app.use(cookieparser());
-    app.use(bodyparser.json());
+    app.use(bodyparser.json({strict: false, type: '*/*'}));
     app.use(function (req, res, next) {
         req.db = db;
         next();
