@@ -18,3 +18,4 @@ var backend = module.exports = {};
 
 require('./models.js');
 require('./endpoints.js');
+require('./fakeit.js');
