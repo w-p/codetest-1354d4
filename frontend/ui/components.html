@@ -3,44 +3,623 @@
 <link rel='import' href='/js/polymer/polymer.html'>
 <link rel='import' href='./styles.html'>
 
+
 <dom-module id='nts-app'>
     <script>
         Polymer({
             is: 'nts-app',
+            ready: function () {
+                app.evt.sub('*.fail', this.on_fail);
+                app.evt.sub('login.ok', this.on_login.bind(this));
+                app.evt.sub('logout.ok', this.on_logout.bind(this));
+                app.evt.sub('input.error', this.on_input_error);
+                new NtsLogin();
+            },
+            on_fail: function (data) {
+                new NtsPopup(data.title, data.message);
+            },
+            on_login: function (id) {
+                var self = this;
+                app.io.get('/users/' + id, null, function (status, data) {
+                    if (status === 200) {
+                        app.evt.pub('refresh.user', data);
+                    }
+                });
+            },
+            on_logout: function () {
+                var self = this;
+                new NtsLogin();
+            },
+            on_input_error: function (messages) {
+                if (messages) {
+                    new NtsPopup(
+                        'Input Errors',
+                        _.map(messages, function (v, k) { return v; })
+                    );
+                }
+            },
+        });
+    </script>
+</dom-module>
+
+
+<dom-module id='nts-login'>
+    <template>
+        <style include='style-core'></style>
+        <style>
+            :host {
+                @apply(--justify-center);
+                @apply(--align-items-center);
+                position: absolute;
+                top: 0;
+                right: 0;
+                bottom: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                z-index: 900;
+            }
+        </style>
+        <span class='modal'></span>
+        <span id='form' class='modal-pane shadow'>
+            <span class='form-row'>
+                <span class='tab' tabindex='0' on-tap='toggle_mode' active>Login</span>
+                <span class='tab' tabindex='0' on-tap='toggle_mode'>Create</span>
+            </span>
+            <span class='form' on-keypress='submit' tabindex='0'>
+                <template is='dom-if' if='{{ show_create }}'>
+                    <span class='form-row'>
+                        <label>Name</label>
+                        <input value='{{ name::input }}'>
+                    </span>
+                    <span class='form-row'>
+                        <label>Description</label>
+                        <input value='{{ description::input }}'>
+                    </span>
+                </template>
+                <span class='form-row'>
+                    <label>E-mail (username)</label>
+                    <input value='{{ email::input }}'>
+                </span>
+                <span class='form-row'>
+                    <label>Password</label>
+                    <input value='{{ password::input }}' type='password'>
+                </span>
+                <span class='no-resize center' style='width: 100%'>
+                    <template is='dom-if' if='{{ show_create }}'>
+                        <span class='button' on-tap='create_user'>Create</span>
+                    </template>
+                    <template is='dom-if' if='{{ !show_create }}'>
+                        <span class='button' on-tap='login_user'>Login</span>
+                    </template>
+                </span>
+            </span>
+        </span>
+    </template>
+    <script>
+        NtsLogin = Polymer({
+            is: 'nts-login',
             properties: {
-                user: {
-                    type: Object,
-                    default: function () { return {}; }
+                show_create: {
+                    type: Boolean,
+                    notify: true,
+                    value: false
+                },
+                name: {
+                    type: String,
+                    notify: true
+                },
+                email: {
+                    type: String,
+                    notify: true
+                },
+                password: {
+                    type: String,
+                    notify: true
+                },
+                description: {
+                    type: String,
+                    notify: true
+                }
+            },
+            factoryImpl: function () {
+                var body = document.querySelector('body');
+                var login = document.querySelector('nts-login');
+                if (login) login.remove();
+                Polymer.dom(body).appendChild(this);
+            },
+            ready: function () {
+                app.fx.fade_in(this);
+            },
+            toggle_mode: function (evt) {
+                var active = this.querySelector('.tab[active]');
+                if (active !== evt.target) {
+                    this.show_create = !this.show_create;
+                    this.toggleAttribute('active', false, active);
+                    this.toggleAttribute('active', true, evt.target);
+                }
+            },
+            submit: function (evt) {
+                if (evt.keyCode !== 13) return;
+                if (this.show_create) {
+                    this.create_user();
+                } else {
+                    this.login_user();
+                }
+            },
+            create_user: function () {
+                var self = this;
+                var user = {
+                    name: this.name,
+                    email: this.email,
+                    password: this.password,
+                    description: this.description
+                }
+                var messages = validate(user, app.validators.user);
+                if (messages) {
+                    app.evt.pub('input.error', messages);
+                    return;
+                }
+                log.debug('creating a new user...');
+                app.io.put('/users', user,
+                    function (status, data) {
+                        if (status === 200) {
+                            app.evt.pub('create.ok', data);
+                            self.login_user();
+                        } else {
+                            app.evt.pub('create.fail', {
+                                title: 'Account Creation Failed',
+                                message: data
+                            });
+                            app.fx.shake(self.$.form);
+                        }
+                    }
+                );
+            },
+            login_user: function () {
+                var self = this;
+                var login = {
+                    email: this.email,
+                    password: this.password
+                }
+                var messages = validate(login, app.validators.login);
+                if (messages) {
+                    app.evt.pub('input.error', messages);
+                    return;
+                }
+                log.debug('logging in...');
+                app.io.post('/login', login,
+                    function (status, data) {
+                        if (status === 200) {
+                            app.evt.pub('login.ok', data.id);
+                            self.dispose();
+                        } else {
+                            app.evt.pub('login.fail', {
+                                title: 'Login Failed',
+                                message: data
+                            });
+                            app.fx.shake(self.$.form);
+                        }
+                    }
+                );
+            },
+            dispose: function () {
+                var self = this;
+                app.fx.fade_out(this, function () {
+                    self.remove();
+                });
+            }
+        });
+    </script>
+</dom-module>
+
+
+<dom-module id='nts-popup'>
+    <template>
+        <style include='style-core'></style>
+        <style>
+            :host {
+                @apply(--justify-center);
+                @apply(--align-items-center);
+                position: absolute;
+                top: 0;
+                right: 0;
+                bottom: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                z-index: 900;
+            }
+            .title {
+                @apply(--align-items-center);
+                padding: var(--padding);
+                width: 100%;
+                height: var(--control-height-large);
+                color: var(--color-dark);
+                background-color: var(--background-dark);
+                text-transform: uppercase;
+            }
+            .message {
+                padding: var(--padding);
+                width: 100%;
+                height: calc(100% - var(--control-height-large));
+                @apply(--text-small);
+            }
+        </style>
+        <span class='modal'></span>
+        <span class='modal-pane shadow'>
+            <span class='title'>{{ title }}</span>
+            <template is='dom-repeat' items='{{ messages }}'>
+                <span class='message'>{{ item }}</span>
+            </template>
+            <span class='no-resize'>
+                <span class='button' on-tap='dispose' on-keypress='dispose' tabindex='0'>OK</span>
+            </span>
+        </span>
+    </template>
+    <script>
+        NtsPopup = Polymer({
+            is: 'nts-popup',
+            properties: {
+                title: String,
+                messages: Array
+            },
+            factoryImpl: function (title, messages) {
+                this.title = title;
+                this.messages = _.isArray(messages) ? messages : [messages];
+                var body = document.querySelector('body');
+                var popup = document.querySelector('nts-popup');
+                if (popup) popup.dispose();
+                Polymer.dom(body).appendChild(this);
+                this._active_element = document.activeElement;
+                this.querySelector('.button').focus();
+            },
+            ready: function () {
+                app.fx.fade_in(this);
+            },
+            dispose: function () {
+                var self = this;
+                this._active_element.focus();
+                app.fx.fade_out(this, function () {
+                    self.remove();
+                });
+            }
+        });
+    </script>
+</dom-module>
+
+
+<dom-module id='nts-menu'>
+    <template>
+        <style include='style-core'></style>
+        <style>
+            :host {
+                position: absolute;
+                top: 0;
+                right: 0;
+                left: 0;
+                bottom: 10%;
+                width: 100%;
+                height: 10%;
+                color: var(--color);
+                background-color: var(--green);
+                @apply(--justify-end);
+            }
+            .menu-title {
+                @apply(--justify-start);
+                @apply(--align-items-center);
+                padding-left: var(--padding);
+                width: 100%;
+                height: 100%;
+                color: var(--color-dark);
+                @apply(--text-large);
+            }
+            .menu-button {
+                @apply(--justify-center);
+                @apply(--align-items-center);
+                width: 10rem;
+                height: 100%;
+                color: var(--color-dark);
+                @apply(--text-small);
+                cursor: pointer;
+                font-weight: bold;
+            }
+            .menu-button:hover {
+                color: var(--color-dark-hover);
+                background-color: var(--background-dark-hover);
+            }
+        </style>
+        <span class='menu-title'>
+            <span>{{ title }}</span>
+            <template is='dom-if' if='{{ logged_in }}'>
+                <span>&nbsp;{{ get_login(logged_in, identity) }}</span>
+            </template>
+        </span>
+        <span class='menu-button'>search</span>
+        <span class='menu-button' on-tap='logout'>log out</span>
+    </template>
+    <script>
+        Polymer({
+            is: 'nts-menu',
+            properties: {
+                title: String,
+                logged_in: {
+                    type: Boolean,
+                    notify: true
+                },
+                identity: {
+                    type: String,
+                    notify: true
+                }
+            },
+            ready: function () {
+                var self = this;
+                app.evt.sub('login.ok', function () {
+                    self.set('logged_in', true);
+                });
+                app.evt.sub('logout.ok', function () {
+                    self.set('logged_in', false);
+                })
+                app.evt.sub('refresh.user', function (user) {
+                    self.set('identity', user.email);
+                })
+            },
+            get_login: function () {
+                if (this.logged_in && this.identity) {
+                    return '[' + this.identity + ']';
+                }
+                return '';
+            },
+            logout: function () {
+                app.io.post('/logout', null, function (status, data) {
+                    if (status === 200) {
+                        app.evt.pub('logout.ok');
+                    } else {
+                        app.evt.pub('logout.error');
+                    }
+                })
+            }
+        });
+    </script>
+</dom-module>
+
+
+<dom-module id='nts-search'>
+    <template>
+        <style include='style-core'></style>
+        <style>
+            :host {
+
+            }
+        </style>
+    </template>
+    <script>
+        Polymer({
+            is: 'nts-search',
+            properties: {
+                query: {
+                    type: String,
+                    notify: true
                 }
             }
         });
     </script>
 </dom-module>
 
-<dom-module id='nts-modal'>
 
+<dom-module id='nts-list-item'>
+    <template>
+        <style include='style-core'></style>
+        <style>
+            :host {
+                width: 100%;
+                background-color: var(--background);
+            }
+            .list-item {
+                @apply(--justify-between);
+                @apply(--align-items-center);
+                @apply(--text-small);
+                width: 100%;
+            }
+            .list-item:hover {
+                cursor: pointer;
+                background-color: var(--background-hover);
+            }
+            .list-item[readonly] {
+                opacity: 0.4;
+                pointer-events: none;
+            }
+            .ellipsize {
+                padding-left: var(--padding);
+            }
+        </style>
+        <span class='list-item' readonly$='{{ readonly }}'>
+            <span class='ellipsize'>{{ text }}</span>
+            <span class='button button-icon'>...</span>
+        </span>
+    </template>
+    <script>
+        Polymer({
+            is: 'nts-list-item',
+            properties: {
+                uuid: String,
+                text: {
+                    type: String,
+                    notify: true
+                },
+                readonly: {
+                    type: Boolean,
+                    notify: true
+                }
+            },
+            ready: function () {
+                this.title = this.text;
+            }
+        });
+    </script>
 </dom-module>
 
-<dom-module id='nts-menu'>
 
+<dom-module id='nts-item-view'>
+    <template>
+        <style include='style-core'></style>
+        <style>
+            :host {
+                position: absolute;
+                top: 10%;
+                right: 0;
+                left: 25%;
+                width: 75%;
+                height: 90%;
+            }
+        </style>
+        <span>
+            <nts-item value='{{ item }}'></nts-item>
+        </span>
+    </template>
+    <script>
+        Polymer({
+            is: 'nts-item-view',
+            properties: {
+                item: {
+                    type: Object,
+                    notify: true,
+                    value: function () { return {}; }
+                }
+            }
+        });
+    </script>
 </dom-module>
 
-<dom-module id='nts-search'>
 
-</dom-module>
+<dom-module id='nts-list-view'>
+    <template>
+        <style include='style-core'></style>
+        <style>
+            :host {
+                @apply(--flex-column);
+                @apply(--justify-between);
+                @apply(--align-items-center);
+                @apply(--text-medium);
+                position: absolute;
+                top: 10%;
+                right: 25%;
+                left: 0;
+                width: 25%;
+                height: 90%;
+                border-right: 1px solid var(--background-dark);
+                overflow-y: auto;
+            }
+            .form {
+                padding: 0;
+                overflow-y: auto;
+            }
+        </style>
+        <span class='form'>
+            <span class='form-row'>
+                <span class='tab' tabindex='0' on-tap='toggle_type' active>Tasks</span>
+                <span class='tab' tabindex='0' on-tap='toggle_type'>Users</span>
+            </span>
+            <template is='dom-if' if='{{ showing_tasks(type) }}'>
+                <template is='dom-repeat' items='{{ tasks }}' filter='filter_list' observer='criteria'>
+                    <nts-list-item uuid='[[ item.id ]]' text='[[ item.name ]]' readonly='{{ !is_editable(item.visibility) }}'></nts-list-item>
+                </template>
+            </template>
+            <template is='dom-if' if='{{ !showing_tasks(type) }}'>
+                <template is='dom-repeat' items='{{ users }}' filter='filter_list' observer='criteria'>
+                    <span>{{ item.name }}</span>
+                </template>
+            </template>
+        </span>
+        <span class='no-resize center'>
+            <span>New</span>
+            <span class='button button-icon' on-tap='create_item'>+</span>
+        </span>
+    </template>
+    <script>
+        Polymer({
+            is: 'nts-list-view',
+            properties: {
+                criteria: {
+                    type: String,
+                    notify: true
+                },
+                type: {
+                    type: String,
+                    notify: true,
+                    value: 'tasks'
+                },
+                tasks: {
+                    type: Array,
+                    notify: true,
+                    value: function () { return [
+                        {id: 1, name: 'Fix backend', visibility: 'public'},
+                        {id: 2, name: 'Commit frontend finally', visibility: 'public'},
+                        {id: 3, name: 'Collect money', visibility: 'private'},
+                        {id: 4, name: 'Create editor', visibility: 'public'}
+                    ]; }
+                },
+                users: {
+                    type: Array,
+                    notify: true,
+                    value: function () { return []; }
+                }
+            },
+            ready: function () {
+                var self = this;
+                app.evt.sub('login.ok', this.get_items.bind(this));
+                app.evt.sub('logout.ok', this.cancel_get_items.bind(this));
+                app.evt.sub('search', function (criteria) {
+                    self.set('criteria', criteria);
+                });
+            },
+            is_editable: function (visibility) {
+                return visibility === 'public';
+            },
+            get_items: function () {
+                log.debug('getting items...');
+                var self = this;
+                app.io.get('/users', null, function (status, data) {
+                    if (status === 200) {
+                        self.set('users', data);
+                    }
+                });
+                this.get_users_handle = this.async(this.get_tasks, 5000);
 
-<dom-module id='nts-user'>
-
-</dom-module>
-
-<dom-module id='nts-task'>
-
-</dom-module>
-
-<dom-module id='nts-user-list'>
-    
-</dom-module>
-
-<dom-module id='nts-task-list'>
-
+                app.io.get('/tasks', null, function (status, data) {
+                    if (status === 200) {
+                        self.set('tasks', data);
+                    }
+                });
+                this.get_users_handle = this.async(this.get_tasks, 5000);
+            },
+            cancel_get_items: function () {
+                log.debug('canceling item retrieval...');
+                this.cancelAsync(this.get_users_handle);
+                this.cancelAsync(this.get_tasks_handle);
+            },
+            filter_list: function (item) {
+                if (!this.criteria) return true;
+                var self = this;
+                return _.chain(item)
+                    .map(function (v, k) {
+                        return _.includes(v, self.criteria);
+                    })
+                    .some()
+                    .value();
+            },
+            toggle_type: function (evt) {
+                var active = this.querySelector('.tab[active]');
+                if (active !== evt.target) {
+                    this.type = this.type === 'tasks' ? 'users' : 'tasks';
+                    this.show_create = !this.show_create;
+                    this.toggleAttribute('active', false, active);
+                    this.toggleAttribute('active', true, evt.target);
+                }
+            },
+            showing_tasks: function () {
+                return this.type === 'tasks';
+            }
+        });
+    </script>
 </dom-module>

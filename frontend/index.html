@@ -17,9 +17,12 @@
     <!--
     Load libraries.
     -->
+    <script src='/js/loglevel/loglevel.min.js'></script>
     <script src='/js/webcomponentsjs/webcomponents.min.js'></script>
-    <script async src='/js/dynamicsjs/dynamics.min.js'></script>
-    <script async src='/js/lodash/lodash.min.js'></script>
+    <script src='/js/webanimationsjs/web-animations.min.js'></script>
+    <script src='/js/lodash/lodash.min.js'></script>
+    <script async src='/js/validatejs/validate.min.js'></script>
+    <script async src='/js/postal/postal.min.js'></script>
 
     <!--
     Load local libraries.
@@ -33,5 +36,8 @@
 </head>
 <body>
     <nts-app></nts-app>
+    <nts-menu title='Note To Self'></nts-menu>
+    <nts-list-view resource='tasks'></nts-list-view>
+    <nts-item-view></nts-item-view>
 </body>
 </html>

@@ -7,10 +7,18 @@
     :root {
         /* colors */
         --color: #707070;
-        --color-dark: #ffffff;
+        --color-hover: #909090;
+        --color-dark: #eeeeee;
+        --color-dark-hover: #ffffff;
 
         --background: #ffffff;
+        --background-hover: #eeeeee;
         --background-dark: #404040;
+        --background-dark-hover: #202020;
+
+        --background-modal: rgba(0, 0, 0, 0.4);
+
+        --green: #4fa61c;
 
         /* sizes */
         --padding: 1rem;
@@ -18,28 +26,28 @@
         --radius: 0.2rem;
         --text-width: 60%;
 
+        --control-height: 3rem;
+        --control-height-large: 5rem;
+
         /* text */
         --text-large: {
             font-family: 'Montserrat', sans-serif;
-            font-size: 2rem;
-            font-weight: 700;
-            text-transform: uppercase;
+            font-size: 1.2rem;
+            font-weight: 400;
         }
         --text-medium: {
             font-family: 'Lato', sans-serif;
-            font-size: 1.6rem;
-            font-weight: 400;
-            text-transform: uppercase;
+            font-size: 1.0rem;
+            font-weight: 300;
         }
         --text-small: {
             font-family: 'Lato', sans-serif;
-            font-size: 1.5rem;
+            font-size: 0.9rem;
             font-weight: 300;
-            text-transform: uppercase;
         }
         --text-tiny: {
             font-family: 'Lato', sans-serif;
-            font-size: 0.9rem;
+            font-size: 0.7rem;
             font-weight: 300;
         }
 
@@ -56,6 +64,12 @@
             display: -webkit-flex;
             display: -ms-flexbox;
             display: flex;
+        }
+        --flex-noresize: {
+            -webkit-box-flex: 0;
+            -webkit-flex: 0 0 auto;
+            -ms-flex: 0 0 auto;
+            flex: 0 0 auto;
         }
         --flex-row: {
             -webkit-box-orient: horizontal;
@@ -151,13 +165,132 @@
         }
     }
 
+    /* general settings */
     :host {
         @apply(--flex);
+        box-sizing: border-box;
     }
-    span {
+    span,
+    label {
         @apply(--flex);
     }
+    input {
+        border: none;
+        outline: none;
+    }
 
+    /* classes */
+    .shadow {
+        -webkit-box-shadow: 0px 12px 24px 0px rgba(0,0,0,0.4);
+        -moz-box-shadow: 0px 12px 24px 0px rgba(0,0,0,0.4);
+        box-shadow: 0px 12px 24px 0px rgba(0,0,0,0.4);
+    }
+    .no-resize {
+        @apply(--flex-noresize);
+    }
+    .center {
+        @apply(--justify-center);
+        @apply(--align-items-center);
+    }
+    .ellipsize {
+        display: inline-block;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+    }
+
+    .modal {
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        background-color: var(--background-modal);
+        z-index: 901;
+    }
+    .modal-pane {
+        @apply(--flex-column);
+        @apply(--text-medium);
+        width: 50%;
+        color: var(--color);
+        background-color: var(--background);
+        z-index: 902;
+    }
+    .tab {
+        @apply(--justify-center);
+        @apply(--align-items-center);
+        @apply(--text-medium);
+        font-weight: bold;
+        height: var(--control-height-large);
+        width: 50%;
+    }
+    .tab[active] {
+        color: var(--color);
+        background-color: var(--background);
+    }
+    .tab:not([active]) {
+        color: var(--color-dark);
+        background-color: var(--background-dark);
+        cursor: pointer;
+    }
+    .tab:hover:not([active]) {
+        color: var(--color-dark-hover);
+        background-color: var(--background-dark-hover);
+    }
+    .form {
+        @apply(--flex-column);
+        @apply(--justify-around);
+        @apply(--align-content-around);
+        padding: var(--padding);
+        width: 100%;
+        /*height: calc(100% - 5rem);*/
+    }
+    .form-row {
+        @apply(--justify-between);
+        width: 100%;
+    }
+    .form-row label,
+    .form-row input {
+        @apply(--justify-start);
+        @apply(--align-items-center);
+        width: 50%;
+        height: var(--control-height);
+        margin: var(--margin);
+    }
+    .form-row input {
+        @apply(--text-medium);
+        padding: var(--padding);
+        background-color: var(--background-hover);
+        border-radius: var(--radius);
+    }
+    .button {
+        @apply(--justify-center);
+        @apply(--align-items-center);
+        @apply(--text-medium);
+        font-weight: bold;
+        align-self: center;
+        margin: var(--margin);
+        height: var(--control-height);
+        width: 10rem;
+        color: var(--color-dark);
+        background-color: var(--background-dark);
+        border-radius: var(--radius);
+        cursor: pointer;
+    }
+    .button:hover {
+        color: var(--color-dark-hover);
+        background-color: var(--background-dark-hover);
+    }
+    .button-icon {
+        min-width: var(--control-height);
+        min-height: var(--control-height);
+        max-width: var(--control-height);
+        max-height: var(--control-height);
+        border-radius: var(--control-height);
+    }
     </style>
     </template>
 </dom-module>
