@@ -13,8 +13,8 @@
                 app.evt.sub('login.ok', this.on_login.bind(this));
                 app.evt.sub('logout.ok', this.on_logout.bind(this));
                 app.evt.sub('input.error', this.on_input_error);
-                app.io.get('/login', null, function (status, data) {
-                    if (status !== 200) new NtsLogin();
+                app.io.get('/tasks', null, function (status, data) {
+                    if (status === 401) new NtsLogin();
                 });
             },
             on_fail: function (data) {
