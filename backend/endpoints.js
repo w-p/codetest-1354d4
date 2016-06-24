@@ -8,7 +8,7 @@ backend.endpoints = {};
 
 (function () {
 
-    function require_login (req) {
+    function require_login (req, res) {
         if (!req.cookies.id) {
             res.status(401)
                 .send('You must be logged in to access this resource.');
@@ -65,7 +65,7 @@ backend.endpoints = {};
         get: {
             path: '/users/:id?',
             handler: function (req, res) {
-                if (require_login(req) !== true) return;
+                if (require_login(req, res) !== true) return;
                 if (!req.params.id) {
                     var users = req.db.find({type: 'user'});
                     users = _.map(users, function (v) {
@@ -128,7 +128,7 @@ backend.endpoints = {};
         post: {
             path: '/users/:id',
             handler: function (req, res) {
-                if (require_login(req) !== true) return;
+                if (require_login(req, res) !== true) return;
                 if (req.cookies.id !== req.params.id) {
                     res.status(401)
                         .send('An account may only be updated by its owner.');
@@ -155,7 +155,7 @@ backend.endpoints = {};
         delete: {
             path: '/users/:id',
             handler: function (req, res) {
-                if (require_login(req) !== true) return;
+                if (require_login(req, res) !== true) return;
                 if (req.cookies.id !== req.params.id) {
                     res.status(401)
                         .send('An account may only be deleted by its owner.');
@@ -171,7 +171,7 @@ backend.endpoints = {};
         get: {
             path: '/tasks/:id?',
             handler: function (req, res) {
-                if (require_login(req) !== true) return;
+                if (require_login(req, res) !== true) return;
                 if (!req.params.id) {
                     var tasks = req.db.find({type: 'task'});
                     tasks = _.map(tasks, function (v) { return v; });
@@ -196,7 +196,7 @@ backend.endpoints = {};
         put: {
             path: '/tasks',
             handler: function (req, res) {
-                if (require_login(req) !== true) return;
+                if (require_login(req, res) !== true) return;
                 var data = req.body;
                 var task = req.db.find({name: data.name});
                 if (task.length > 0) {
@@ -219,7 +219,7 @@ backend.endpoints = {};
         post: {
             path: '/tasks/:id',
             handler: function (req, res) {
-                if (require_login(req) !== true) return;
+                if (require_login(req, res) !== true) return;
                 var task = req.db.get(req.params.id);
                 if (task.owner !== req.cookies.id && task.visibility !== 'public') {
                     res.status(401)
@@ -239,7 +239,7 @@ backend.endpoints = {};
         delete: {
             path: '/tasks/:id',
             handler: function (req, res) {
-                if (require_login(req) !== true) return;
+                if (require_login(req, res) !== true) return;
                 var task = req.db.get(req.params.id);
                 if (task.owner !== req.cookies.id) {
                     res.status(401)
