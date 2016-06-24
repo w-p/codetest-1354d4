@@ -13,7 +13,9 @@
                 app.evt.sub('login.ok', this.on_login.bind(this));
                 app.evt.sub('logout.ok', this.on_logout.bind(this));
                 app.evt.sub('input.error', this.on_input_error);
-                new NtsLogin();
+                app.io.get('/login', null, function (status, data) {
+                    if (status !== 200) new NtsLogin();
+                });
             },
             on_fail: function (data) {
                 new NtsPopup(data.title, data.message);
@@ -521,13 +523,13 @@
                 <span class='tab' tabindex='0' on-tap='toggle_type'>Users</span>
             </span>
             <template is='dom-if' if='{{ showing_tasks(type) }}'>
-                <template is='dom-repeat' items='{{ tasks }}' filter='filter_list' observer='criteria'>
+                <template is='dom-repeat' items='{{ tasks }}' filter='{{ filter_list(criteria) }}' sort='sort_tasks' observe='priority'>
                     <nts-list-item uuid='[[ item.id ]]' text='[[ item.name ]]' readonly='{{ !is_editable(item.visibility) }}'></nts-list-item>
                 </template>
             </template>
             <template is='dom-if' if='{{ !showing_tasks(type) }}'>
                 <template is='dom-repeat' items='{{ users }}' filter='filter_list' observer='criteria'>
-                    <span>{{ item.name }}</span>
+                    <nts-list-item uuid='[[ item.id ]]' text='[[ item.name ]]'></nts-list-item>
                 </template>
             </template>
         </span>
@@ -579,19 +581,24 @@
                         self.set('users', data);
                     }
                 });
-                this.get_users_handle = this.async(this.get_tasks, 5000);
+                this.get_users_handle = this.async(this.get_items, 5000);
 
                 app.io.get('/tasks', null, function (status, data) {
                     if (status === 200) {
                         self.set('tasks', data);
                     }
                 });
-                this.get_users_handle = this.async(this.get_tasks, 5000);
+                this.get_tasks_handle = this.async(this.get_items, 5000);
             },
             cancel_get_items: function () {
                 log.debug('canceling item retrieval...');
                 this.cancelAsync(this.get_users_handle);
                 this.cancelAsync(this.get_tasks_handle);
+            },
+            sort_tasks: function () {
+                return function(a, b) {
+                    return a - b;
+                }
             },
             filter_list: function (item) {
                 if (!this.criteria) return true;
