@@ -169,9 +169,7 @@ backend.endpoints = {};
             handler: function (req, res) {
                 if (!req.params.id) {
                     var tasks = req.db.find({type: 'task'});
-                    tasks = _.map(tasks, function (v) {
-                        return {id: v.id, name: v.name};
-                    });
+                    tasks = _.map(tasks, function (v) { return v; });
                     res.send(JSON.stringify(tasks));
                     return;
                 }
