@@ -42,6 +42,21 @@ describe('backend.endpoints', function () {
         );
 
         it(
+            'Then logs a user in, with email and password',
+            function () {
+                return agent.post(endpoints.login.post.path)
+                    .send(login)
+                    .then(function (res) {
+                        expect(res).to.have.status(200);
+                        expect(res).to.have.cookie('id'); // stores cookie for future requests...
+                        var auth = JSON.parse(res.text);
+                        expect(auth.id).to.be.a('string');
+                        expect(auth.id.length).to.equal(36);
+                    })
+            }
+        );
+
+        it(
             'Then retrieves the user by id',
             function () {
                 return agent.get(endpoints.users.get.path.split(':')[0] + user_id)
@@ -64,21 +79,6 @@ describe('backend.endpoints', function () {
                         var users = JSON.parse(res.text);
                         expect(users.length).to.equal(1);
                     });
-            }
-        );
-
-        it(
-            'Then logs a user in, with email and password',
-            function () {
-                return agent.post(endpoints.login.post.path)
-                    .send(login)
-                    .then(function (res) {
-                        expect(res).to.have.status(200);
-                        expect(res).to.have.cookie('id'); // stores cookie for future requests...
-                        var auth = JSON.parse(res.text);
-                        expect(auth.id).to.be.a('string');
-                        expect(auth.id.length).to.equal(36);
-                    })
             }
         );
 
