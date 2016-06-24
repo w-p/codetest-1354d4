@@ -9,21 +9,34 @@ backend.endpoints = {};
 (function () {
 
     this.login = {
+        get: {
+            path: '/login',
+            handler: function (req, res) {
+                if (req.cookies.id) {
+                    if (req.db.get(req.params.id)) {
+                        res.send('ok');
+                        return;
+                    }
+                }
+                res.status(401)
+                    .send('This session has not yet logged in.');
+            }
+        },
         post: {
             path: '/login',
             handler: function (req, res) {
                 var auth = req.body;
                 var user = req.db.find({email: auth.email});
-                if (!user) {
-                    res.status(404)
-                        .send('The requested account does not exist.');
-                    return;
-                }
                 if (user.length > 1) {
                     res.status(500)
                         .send('More than one account has the same unique identifier.')
                 }
                 user = user[0];
+                if (!user) {
+                    res.status(404)
+                        .send('The requested account does not exist.');
+                    return;
+                }
                 if (user.password !== auth.password) {
                     res.status(401)
                         .send('Authentication failed, incorrect password.');

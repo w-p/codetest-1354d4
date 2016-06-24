@@ -9,6 +9,8 @@ nts.database = {};
 
 (function () {
 
+    var database = null;
+
     this.model_factory = function (fields, data_dict) {
         var result = {};
         for (field of fields) {
@@ -42,6 +44,13 @@ nts.database = {};
         this.delete = function (id) {
             delete datastore[id];
         };
+    };
+
+    this.open = function () {
+        if (!database) {
+            database = new nts.database.DB();
+        }
+        return database;
     };
 
 }).apply( nts.database );

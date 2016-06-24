@@ -16,7 +16,7 @@ nts.server = {};
     var _port = 8888;
     var app = express();
     var server = http.createServer(app);
-    var db = new nts.database.DB();
+    var db = nts.database.open();
     var methods = [
         'get',
         'put',
