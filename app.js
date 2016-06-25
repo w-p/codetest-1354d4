@@ -18,6 +18,7 @@ if (config.load_fake_data && process.env.NODE_ENV !== 'test') {
 var app = module.exports = nts.server;
 app.register_endpoint(backend.endpoints.login);
 app.register_endpoint(backend.endpoints.logout);
+app.register_endpoint(backend.endpoints.whoami);
 app.register_endpoint(backend.endpoints.tasks);
 app.register_endpoint(backend.endpoints.users);
 app.start(config.host, config.port, config.site_root);
