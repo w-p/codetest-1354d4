@@ -71,6 +71,12 @@
             -ms-flex: 0 0 auto;
             flex: 0 0 auto;
         }
+        --flex-resize: {
+            -webkit-box-flex: 1;
+            -webkit-flex: 1 1 auto;
+            -ms-flex: 1 1 auto;
+            flex: 1 1 auto;
+        }
         --flex-row: {
             -webkit-box-orient: horizontal;
             -webkit-box-direction: normal;
@@ -171,10 +177,17 @@
         box-sizing: border-box;
     }
     span,
-    label {
+    label,
+    input,
+    textarea,
+    nts-select {
         @apply(--flex);
     }
-    input {
+    input,
+    textarea {
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        appearance: none;
         border: none;
         outline: none;
     }
@@ -187,6 +200,9 @@
     }
     .no-resize {
         @apply(--flex-noresize);
+    }
+    .resize {
+        @apply(--flex-resize);
     }
     .center {
         @apply(--justify-center);
@@ -246,22 +262,25 @@
         @apply(--align-content-around);
         padding: var(--padding);
         width: 100%;
-        /*height: calc(100% - 5rem);*/
     }
     .form-row {
         @apply(--justify-between);
         width: 100%;
     }
     .form-row label,
-    .form-row input {
+    .form-row input,
+    .form-row textarea,
+    .form-row nts-select {
         @apply(--justify-start);
         @apply(--align-items-center);
+        @apply(--text-medium);
         width: 50%;
         height: var(--control-height);
         margin: var(--margin);
     }
-    .form-row input {
-        @apply(--text-medium);
+    .form-row input,
+    .form-row textarea,
+    .form-row nts-select {
         padding: var(--padding);
         background-color: var(--background-hover);
         border-radius: var(--radius);
@@ -271,7 +290,6 @@
         @apply(--align-items-center);
         @apply(--text-medium);
         font-weight: bold;
-        align-self: center;
         margin: var(--margin);
         height: var(--control-height);
         width: 10rem;

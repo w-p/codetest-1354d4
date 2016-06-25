@@ -11,11 +11,10 @@
             ready: function () {
                 app.evt.sub('*.fail', this.on_fail);
                 app.evt.sub('login.ok', this.on_login.bind(this));
+                app.evt.sub('login.required', this.on_logout.bind(this));
                 app.evt.sub('logout.ok', this.on_logout.bind(this));
                 app.evt.sub('input.error', this.on_input_error);
-                app.io.get('/tasks', null, function (status, data) {
-                    if (status === 401) new NtsLogin();
-                });
+                app.evt.sub('refresh.user', this.on_refresh);
             },
             on_fail: function (data) {
                 new NtsPopup(data.title, data.message);
@@ -24,12 +23,13 @@
                 var self = this;
                 app.io.get('/users/' + id, null, function (status, data) {
                     if (status === 200) {
-                        app.evt.pub('refresh.user', data);
+                        app.set_session(user.id, user.email);
+                        // app.evt.pub('refresh.user', data);
                     }
                 });
             },
             on_logout: function () {
-                var self = this;
+                app.delete_session();
                 new NtsLogin();
             },
             on_input_error: function (messages) {
@@ -40,6 +40,156 @@
                     );
                 }
             },
+        });
+    </script>
+</dom-module>
+
+
+<dom-module id='nts-select'>
+    <template>
+        <style include='style-core'></style>
+        <style>
+            :host {
+                @apply(--justify-center);
+                @apply(--align-items-center);
+                position: relative;
+            }
+            :host input {
+                position: absolute;
+                top: 0;
+                right: 0;
+                bottom: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                padding: inherit;
+                font-family: inherit;
+                font-weight: inherit;
+                font-size: inherit;
+                color: inherit;
+                background-color: rgba(0, 0, 0, 0);
+                cursor: pointer;
+            }
+            .select {
+                @apply(--flex-column);
+                position: absolute;
+                top: 100%;
+                right: 0;
+                left: 0;
+                width: 100%;
+                max-height: 12rem;
+                color: inherit;
+                background-color: inherit;
+                overflow-y: auto;
+                z-index: 800;
+            }
+            .select:not([open]) {
+                display: none;
+            }
+        </style>
+        <input value='[[ selected ]]' on-tap='toggle' tabindex='0' on-blur='blurred' readonly>
+        <span class='select shadow' open$='[[ open ]]'>
+            <content></content>
+        </span>
+    </template>
+    <script>
+        Polymer({
+            is: 'nts-select',
+            properties: {
+                open: Boolean,
+                disabled: {
+                    type: Boolean,
+                    reflectToAttribute: true
+                },
+                selected: String,
+                value: {
+                    type: String,
+                    notify: true
+                }
+            },
+            listeners: {
+                'selected': 'select',
+                'dom-change': 'init_value'
+            },
+            observers: [
+                'init_value(value)',
+            ],
+            attached: function () {
+                this.init_value();
+            },
+            init_value: function (value) {
+                var self = this;
+                this.async(function () {
+                    var options = self.querySelectorAll('nts-option');
+                    var option = _.find(options, {value: self.value});
+                    if (option) option.select();
+                }, 10);
+            },
+            toggle: function () {
+                if (this.disabled) return;
+                this.set('open', !this.open);
+            },
+            blurred: function (evt) {
+                var self = this;
+                this.async(function () {
+                    var focused = document.activeElement;
+                    if (focused) {
+                        focused = Polymer.dom(focused).getOwnerRoot();
+                        if (focused && self.isLightDescendant(focused.host)) {
+                            return;
+                        }
+                    }
+                    self.close();
+                }, 150);
+            },
+            select: function (evt) {
+                this.set('value', evt.target.value);
+                this.set('selected', evt.target.innerText.trim());
+                this.close();
+            },
+            close: function () {
+                this.set('open', false);
+            }
+        });
+    </script>
+</dom-module>
+
+
+<dom-module id='nts-option'>
+    <template>
+        <style include='style-core'></style>
+        <style>
+            :host {
+                @apply(--justify-center);
+                @apply(--align-items-center);
+                @apply(--flex-noresize);
+                cursor: pointer;
+            }
+            .option {
+                @apply(--justify-start);
+                @apply(--align-items-center);
+                width: 100%;
+                height: 100%;
+                padding: var(--padding);
+                background-color: var(--background-hover);
+            }
+            .option:hover {
+                background-color: var(--background);
+            }
+        </style>
+        <span class='option' on-tap='select' tabindex='0'>
+            <content></content>
+        </span>
+    </template>
+    <script>
+        Polymer({
+            is: 'nts-option',
+            properties: {
+                value: String
+            },
+            select: function () {
+                this.fire('selected');
+            }
         });
     </script>
 </dom-module>
@@ -358,13 +508,12 @@
                 var self = this;
                 app.evt.sub('login.ok', function () {
                     self.set('logged_in', true);
+                    self.set('identity', app.get_session().username);
                 });
                 app.evt.sub('logout.ok', function () {
                     self.set('logged_in', false);
-                })
-                app.evt.sub('refresh.user', function (user) {
-                    self.set('identity', user.email);
-                })
+                    self.set('identity', app.get_session().username);
+                });
             },
             get_login: function () {
                 if (this.logged_in && this.identity) {
@@ -435,9 +584,9 @@
                 padding-left: var(--padding);
             }
         </style>
-        <span class='list-item' readonly$='{{ readonly }}'>
-            <span class='ellipsize'>{{ text }}</span>
-            <span class='button button-icon'>...</span>
+        <span class='list-item' readonly$='[[ readonly ]]'>
+            <span class='ellipsize'>[[ text ]]</span>
+            <span class='button button-icon' on-tap='edit'>...</span>
         </span>
     </template>
     <script>
@@ -445,17 +594,14 @@
             is: 'nts-list-item',
             properties: {
                 uuid: String,
-                text: {
-                    type: String,
-                    notify: true
-                },
-                readonly: {
-                    type: Boolean,
-                    notify: true
-                }
+                text: String,
+                readonly: Boolean
             },
             ready: function () {
                 this.title = this.text;
+            },
+            edit: function () {
+                this.fire('edit');
             }
         });
     </script>
@@ -473,21 +619,194 @@
                 left: 25%;
                 width: 75%;
                 height: 90%;
+                background-color: var(--background-dark);
+            }
+            .item-container {
+                @apply(--flex-column);
+                @apply(--justify-between);
+                margin: calc(var(--margin) * 2);
+                width: 100%;
+                border-radius: var(--radius);
+                background-color: var(--background);
+            }
+            .form {
+                @apply(--justify-start);
+                @apply(--flex-resize);
+                height: 100%;
+                overflow-y: auto;
+            }
+            .item-title {
+                @apply(--text-large);
+                @apply(--align-content-center);
+                width: 100%;
+                height: var(--control-height);
+            }
+            .item-description {
+                margin-top: 0 !important;
+                resize: none;
+                width: 100% !important;
+                min-height: 5rem;
+                height: auto;
+                max-height: 10rem;
             }
         </style>
-        <span>
-            <nts-item value='{{ item }}'></nts-item>
-        </span>
+        <template is='dom-if' if='{{ !is_empty(item) }}'>
+            <span class='item-container'>
+                <span class='form'>
+                    <template is='dom-if' if='{{ is_task(item) }}'>
+                        <span class='item-title'>Task Editor</span>
+                    </template>
+                    <template is='dom-if' if='{{ !is_task(item) }}'>
+                        <span class='item-title'>User Editor</span>
+                    </template>
+                    <span class='form-row'>
+                        <label>Name</label>
+                        <input value='{{ item.name::input }}' readonly$='{{ !is_editable(item) }}'>
+                    </span>
+                    <template is='dom-if' if='{{ !is_task(item) }}'>
+                        <span class='form-row'>
+                            <label>E-mail (Login ID)</label>
+                            <input value='{{ item.email::input }}' readonly$='{{ !is_editable(item) }}'>
+                        </span>
+                    </template>
+                    <template is='dom-if' if='{{ is_task(item) }}'>
+                        <span class='form-row'>
+                            <label>Owner</label>
+                            <nts-select value='{{ item.owner }}' disabled$='{{ !is_editable(item) }}'>
+                                <template is='dom-repeat' items='[[ users ]]' as='user'>
+                                    <nts-option value='[[ user.id ]]'>[[ user.name ]]</nts-option>
+                                </template>
+                            </nts-select>
+                        </span>
+                        <span class='form-row'>
+                            <label>Status</label>
+                            <nts-select value='{{ item.status }}' disabled$='{{ !is_editable(item) }}'>
+                                <nts-option value='open'>open</nts-option>
+                                <nts-option value='closed'>closed</nts-option>
+                            </nts-select>
+                        </span>
+                        <span class='form-row'>
+                            <label>Priority</label>
+                            <input value='{{ item.priority::input }}' readonly$='{{ !is_editable(item) }}'>
+                        </span>
+                        <span class='form-row'>
+                            <label>Visibility</label>
+                            <nts-select value='{{ item.visibility }}' disabled$='{{ !is_editable(item) }}'>
+                                <nts-option value='public'>public</nts-option>
+                                <nts-option value='private'>private</nts-option>
+                            </nts-select>
+                        </span>
+                    </template>
+                    <span class='form-row'>
+                        <label>Description</label>
+                    </span>
+                    <span class='form-row resize'>
+                        <textarea class='item-description' value='{{ item.description::input }}' readonly$='{{ !is_editable(item) }}'></textarea>
+                    </span>
+                </span>
+                <span class='center'>
+                    <template is='dom-if' if='{{ is_editable(item) }}'>
+                        <span class='button' on-tap='save'>Save</span>
+                    </template>
+                    <span class='button' on-tap='dispose'>Close</span>
+                </span>
+            </span>
+        </template>
     </template>
     <script>
         Polymer({
             is: 'nts-item-view',
             properties: {
+                users: {
+                    type: Array,
+                    notify: true,
+                    value: function () { return []; }
+                },
                 item: {
                     type: Object,
                     notify: true,
                     value: function () { return {}; }
                 }
+            },
+            ready: function () {
+                var self = this;
+                app.evt.sub('edit', function (data) {
+                    self.dispose();
+                    self.set('users', data.users);
+                    self.set('item', _.clone(data.item));
+                });
+            },
+            is_empty: function () {
+                return _.isEmpty(this.item);
+            },
+            is_task: function () {
+                if (!this.item) return false;
+                return this.item.type === 'task';
+            },
+            is_editable: function () {
+                // FIXME: session id is not getting set if
+                // already logged in, need a whoami route
+                // to self-identify
+                // console.log('visibility', this.item.visibility);
+                // console.log('item id', this.item.id);
+                // console.log('owner id', this.item.owner);
+                // console.log('session id', app.get_session().id);
+                if (!this.item) return false;
+                if (this.is_task()) {
+                    return (
+                        this.item.visibility === 'public' ||
+                        this.item.owner === app.get_session().id
+                    );
+                } else {
+                    return this.item.id === app.get_session().id;
+                }
+            },
+            save: function () {
+                var task = {
+                    name: this.item.name,
+                    owner: this.item.owner,
+                    status: this.item.status,
+                    priority: parseInt(this.item.priority),
+                    visibility: this.item.visibility,
+                    description: this.item.description
+                }
+                var messages = validate(task, app.validators.task);
+                if (messages) {
+                    app.evt.pub('input.error', messages);
+                    return;
+                }
+                console.log('saving task', task);
+                if (this.item.id) {
+                    app.io.post('/tasks/' + this.item.id, task,
+                        function (status, data) {
+                            if (status === 200) {
+                                app.evt.pub('refresh');
+                            } else {
+                                app.evt.pub('create.fail', {
+                                    title: 'Task Update Failed',
+                                    message: data
+                                });
+                            }
+                        }
+                    );
+                } else {
+                    app.io.put('/tasks', task,
+                        function (status, data) {
+                            if (status === 200) {
+                                app.evt.pub('refresh');
+                            } else {
+                                app.evt.pub('create.fail', {
+                                    title: 'Task Creation Failed',
+                                    message: data
+                                });
+                            }
+                        }
+                    );
+                }
+            },
+            dispose: function () {
+                this.set('item', {});
+                this.set('users', []);
             }
         });
     </script>
@@ -509,7 +828,6 @@
                 left: 0;
                 width: 25%;
                 height: 90%;
-                border-right: 1px solid var(--background-dark);
                 overflow-y: auto;
             }
             .form {
@@ -523,20 +841,22 @@
                 <span class='tab' tabindex='0' on-tap='toggle_type'>Users</span>
             </span>
             <template is='dom-if' if='{{ showing_tasks(type) }}'>
-                <template is='dom-repeat' items='{{ tasks }}' filter='{{ filter_list(criteria) }}' sort='sort_tasks' observe='priority'>
+                <template id='task_list' is='dom-repeat' items='{{ tasks }}' filter='{{ filter_list(criteria) }}' sort='sort_tasks' observe='priority'>
                     <nts-list-item uuid='[[ item.id ]]' text='[[ item.name ]]' readonly='{{ !is_editable(item.visibility) }}'></nts-list-item>
                 </template>
             </template>
             <template is='dom-if' if='{{ !showing_tasks(type) }}'>
-                <template is='dom-repeat' items='{{ users }}' filter='filter_list' observer='criteria'>
+                <template id='user_list' is='dom-repeat' items='{{ users }}' filter='filter_list' observer='criteria'>
                     <nts-list-item uuid='[[ item.id ]]' text='[[ item.name ]]'></nts-list-item>
                 </template>
             </template>
         </span>
-        <span class='no-resize center'>
-            <span>New</span>
-            <span class='button button-icon' on-tap='create_item'>+</span>
-        </span>
+        <template is='dom-if' if='{{ showing_tasks(type) }}'>
+            <span class='no-resize center'>
+                <span>New</span>
+                <span class='button button-icon' on-tap='on_create'>+</span>
+            </span>
+        </template>
     </template>
     <script>
         Polymer({
@@ -562,38 +882,76 @@
                     value: function () { return []; }
                 }
             },
+            listeners: {
+                'edit': 'on_edit'
+            },
             ready: function () {
                 var self = this;
                 app.evt.sub('login.ok', this.get_items.bind(this));
                 app.evt.sub('logout.ok', this.cancel_get_items.bind(this));
+                app.evt.sub('refresh', function () {
+                    self.get_items(true);
+                });
                 app.evt.sub('search', function (criteria) {
                     self.set('criteria', criteria);
                 });
+                this.get_items();
             },
             is_editable: function (visibility) {
                 return visibility === 'public';
             },
-            get_items: function () {
+            on_create: function () {
+                if (this.type !== 'tasks') return;
+                var data = {
+                    name: '',
+                    owner: app.get_session().id,
+                    status: 'open',
+                    priority: '',
+                    visibility: 'private',
+                    description: '',
+                    type: 'task'
+                };
+                app.evt.pub('edit', {item: data, users: this.users});
+            },
+            on_edit: function (evt) {
+                var list = (
+                    this.type === 'tasks'
+                    ? this.querySelector('#task_list')
+                    : this.querySelector('#user_list')
+                );
+                var data = list.itemForElement(evt.target);
+                app.evt.pub('edit', {item: _.clone(data), users: this.users});
+            },
+            get_items: function (refresh) {
                 log.debug('getting items...');
                 var self = this;
                 app.io.get('/users', null, function (status, data) {
                     if (status === 200) {
                         self.set('users', data);
+                    } else if (status === 401) {
+                        app.evt.pub('login.required');
+                        self.cancel_get_items();
+                    } else {
+                        self.cancel_get_items();
                     }
                 });
-                this.get_users_handle = this.async(this.get_items, 5000);
-
                 app.io.get('/tasks', null, function (status, data) {
                     if (status === 200) {
                         self.set('tasks', data);
+                    } else if (status === 401) {
+                        app.evt.pub('login.required');
+                        self.cancel_get_items();
+                    } else {
+                        self.cancel_get_items();
                     }
                 });
-                this.get_tasks_handle = this.async(this.get_items, 5000);
+                if (!refresh) {
+                    this.get_items_handle = this.async(this.get_items, 5000);
+                }
             },
             cancel_get_items: function () {
                 log.debug('canceling item retrieval...');
-                this.cancelAsync(this.get_users_handle);
-                this.cancelAsync(this.get_tasks_handle);
+                this.cancelAsync(this.get_items_handle);
             },
             sort_tasks: function () {
                 return function(a, b) {

@@ -1,12 +1,31 @@
 
 
 
-log.setLevel('debug');
-log.setDefaultLevel('debug');
+log.setLevel('info');
 
 var app = {};
 
 (function () {
+
+    var session = {
+        id: null,
+        username: null
+    };
+
+    this.set_session = function (id, username) {
+        session.id = id;
+        session.username = username;
+    };
+
+    this.get_session = function () {
+        return session;
+    };
+
+    this.delete_session = function () {
+        session.id = null;
+        session.username = null;
+    }
+
 }).apply( app );
 
 
@@ -21,6 +40,7 @@ app.validators = {};
         email: {
             message: 'appears to be invalid.'
         },
+
         length: {
             password: {
                 minimum: 1,
@@ -60,6 +80,25 @@ app.validators = {};
         password: {
             presence: defaults.presence,
             length: defaults.length.password
+        }
+    };
+
+    this.task = {
+        name: {
+            presence: defaults.presence,
+            length: defaults.length.name
+        },
+        status: {
+            presence: defaults.presence,
+            inclusion: {within: ['open', 'closed']}
+        },
+        priority: {
+            presence: defaults.presence,
+            numericality: true
+        },
+        visibility: {
+            presence: defaults.presence,
+            inclusion: {within: ['public', 'private']}
         },
         description: {
             presence: defaults.presence,
@@ -149,7 +188,10 @@ app.evt = {};
     this.sub = function (namespace, handler) {
         postal.subscribe({
             topic: namespace,
-            callback: handler
+            callback: function (args) {
+                log.debug('[evt]', namespace, '[data]', args);
+                handler(args);
+            }
         });
     };
 
