@@ -57,6 +57,20 @@ describe('backend.endpoints', function () {
         );
 
         it(
+            'Then retrieves the user by cookie',
+            function () {
+                return agent.get(endpoints.whoami.get.path)
+                    .then(function (res) {
+                        expect(res).to.have.status(200);
+                        var user = JSON.parse(res.text);
+                        expect(user.id).to.equal(user_id);
+                        expect(user.name).to.equal(fixtures.user_data.name);
+                        expect(user.bad).to.be.undefined;
+                    });
+            }
+        );
+
+        it(
             'Then retrieves the user by id',
             function () {
                 return agent.get(endpoints.users.get.path.split(':')[0] + user_id)
@@ -78,6 +92,10 @@ describe('backend.endpoints', function () {
                         expect(res).to.have.status(200);
                         var users = JSON.parse(res.text);
                         expect(users.length).to.equal(1);
+                        expect(users[0].id).not.to.be.undefined;
+                        expect(users[0].name).not.to.be.undefined;
+                        expect(users[0].email).not.to.be.undefined;
+                        expect(users[0].description).not.to.be.undefined;
                     });
             }
         );
@@ -118,6 +136,13 @@ describe('backend.endpoints', function () {
                         expect(res).to.have.status(200);
                         var tasks = JSON.parse(res.text);
                         expect(tasks.length).to.equal(1);
+                        expect(tasks[0].id).not.to.be.undefined;
+                        expect(tasks[0].name).not.to.be.undefined;
+                        expect(tasks[0].owner).not.to.be.undefined;
+                        expect(tasks[0].status).not.to.be.undefined;
+                        expect(tasks[0].priority).not.to.be.undefined;
+                        expect(tasks[0].visibility).not.to.be.undefined;
+                        expect(tasks[0].description).not.to.be.undefined;
                     });
             }
         );

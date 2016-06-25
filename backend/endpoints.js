@@ -22,6 +22,29 @@ backend.endpoints = {};
         return true;
     }
 
+    this.whoami = {
+        get: {
+            path: '/whoami',
+            handler: function (req, res) {
+                if (require_login(req, res) !== true) return;
+                var user = req.db.get(req.cookies.id);
+                if (!user) {
+                    res.status(404)
+                        .send('Unable to find the specified account.');
+                    return;
+                }
+                res.send(JSON.stringify(
+                    {
+                        id: user.id,
+                        name: user.name,
+                        email: user.email,
+                        description: user.description
+                    }
+                ));
+            }
+        }
+    };
+
     this.login = {
         post: {
             path: '/login',
@@ -69,7 +92,12 @@ backend.endpoints = {};
                 if (!req.params.id) {
                     var users = req.db.find({type: 'user'});
                     users = _.map(users, function (v) {
-                        return {id: v.id, name: v.name};
+                        return {
+                            id: v.id,
+                            name: v.name,
+                            email: v.email,
+                            description: v.description
+                        };
                     });
                     res.send(JSON.stringify(users));
                     return;
@@ -226,7 +254,7 @@ backend.endpoints = {};
                         .send('A non-public task may only be updated by its owner.');
                     return;
                 }
-                var data = res.body;
+                var data = req.body;
                 _.forEach(task, function (v, key) {
                     if (key !== 'id') {
                         task[key] = data[key] || task[key];

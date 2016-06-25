@@ -7,5 +7,5 @@ var config = module.exports = {
     site_root: './frontend',
     load_fake_data: true,
     log_dir: '.',
-    log_level: testing ? 'debug' : 'info'
+    log_level: testing ? 'error' : 'info'
 };
