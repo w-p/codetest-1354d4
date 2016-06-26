@@ -154,7 +154,12 @@ app.io = {};
                 log.debug(' < status:  ', status);
                 log.debug(' < content: ', content_type);
                 log.debug(' < response:', data);
-                if (cb) cb(status, data);
+
+                if (cb) {
+                    cb(status, data);
+                } else if (status !== 200) {
+                    app.evt.pub('status.' + status, data);
+                }
             })
             .catch(function (err) {
                 log.debug(' x error:', err);

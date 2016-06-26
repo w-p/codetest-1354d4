@@ -9,37 +9,41 @@
         Polymer({
             is: 'nts-app',
             ready: function () {
-                app.evt.sub('*.fail', this.on_fail);
                 app.evt.sub('login.ok', this.on_login.bind(this));
-                app.evt.sub('login.required', this.on_logout.bind(this));
                 app.evt.sub('logout.ok', this.on_logout.bind(this));
+                app.evt.sub('logout.error', this.on_logout.bind(this));
                 app.evt.sub('input.error', this.on_input_error);
-                app.evt.sub('refresh.user', this.on_refresh);
+                this.refresh();
             },
-            on_fail: function (data) {
-                new NtsPopup(data.title, data.message);
-            },
-            on_login: function (id) {
-                var self = this;
-                app.io.get('/users/' + id, null, function (status, data) {
-                    if (status === 200) {
-                        app.set_session(user.id, user.email);
-                        // app.evt.pub('refresh.user', data);
+            refresh: function () {
+                app.io.get('/whoami', null,
+                    function (status, user) {
+                        if (status === 200) {
+                            app.set_session(user.id, user.email);
+                            app.evt.pub('refresh.session');
+                        } else if (status === 401) {
+                            new NtsLogin();
+                        } else {
+                            app.delete_session();
+                            app.evt.pub('refresh.session');
+                        }
                     }
-                });
+                );
+            },
+            on_login: function () {
+                this.refresh();
             },
             on_logout: function () {
                 app.delete_session();
+                app.evt.pub('refresh.session');
                 new NtsLogin();
             },
             on_input_error: function (messages) {
                 if (messages) {
-                    new NtsPopup(
-                        'Input Errors',
-                        _.map(messages, function (v, k) { return v; })
-                    );
+                    messages = _.map(messages, function (v, k) { return v; });
+                    new NtsPopup('Input Errors', messages);
                 }
-            },
+            }
         });
     </script>
 </dom-module>
@@ -239,10 +243,10 @@
                 </span>
                 <span class='no-resize center' style='width: 100%'>
                     <template is='dom-if' if='{{ show_create }}'>
-                        <span class='button' on-tap='create_user'>Create</span>
+                        <span class='button shadow' on-tap='create_user'>Create</span>
                     </template>
                     <template is='dom-if' if='{{ !show_create }}'>
-                        <span class='button' on-tap='login_user'>Login</span>
+                        <span class='button shadow' on-tap='login_user'>Login</span>
                     </template>
                 </span>
             </span>
@@ -316,13 +320,9 @@
                 app.io.put('/users', user,
                     function (status, data) {
                         if (status === 200) {
-                            app.evt.pub('create.ok', data);
                             self.login_user();
                         } else {
-                            app.evt.pub('create.fail', {
-                                title: 'Account Creation Failed',
-                                message: data
-                            });
+                            new NtsPopup('Account Creation Failed', data);
                             app.fx.shake(self.$.form);
                         }
                     }
@@ -343,13 +343,10 @@
                 app.io.post('/login', login,
                     function (status, data) {
                         if (status === 200) {
-                            app.evt.pub('login.ok', data.id);
+                            app.evt.pub('login.ok');
                             self.dispose();
                         } else {
-                            app.evt.pub('login.fail', {
-                                title: 'Login Failed',
-                                message: data
-                            });
+                            new NtsPopup('Login Failed', data);
                             app.fx.shake(self.$.form);
                         }
                     }
@@ -405,7 +402,7 @@
                 <span class='message'>{{ item }}</span>
             </template>
             <span class='no-resize'>
-                <span class='button' on-tap='dispose' on-keypress='dispose' tabindex='0'>OK</span>
+                <span class='button shadow' on-tap='dispose' on-keypress='dispose' tabindex='0'>OK</span>
             </span>
         </span>
     </template>
@@ -487,7 +484,7 @@
                 <span>&nbsp;{{ get_login(logged_in, identity) }}</span>
             </template>
         </span>
-        <span class='menu-button'>search</span>
+        <!-- <span class='menu-button'>search</span> -->
         <span class='menu-button' on-tap='logout'>log out</span>
     </template>
     <script>
@@ -506,13 +503,10 @@
             },
             ready: function () {
                 var self = this;
-                app.evt.sub('login.ok', function () {
-                    self.set('logged_in', true);
-                    self.set('identity', app.get_session().username);
-                });
-                app.evt.sub('logout.ok', function () {
-                    self.set('logged_in', false);
-                    self.set('identity', app.get_session().username);
+                app.evt.sub('refresh.session', function () {
+                    var identity = app.get_session().username;
+                    self.set('logged_in', !_.isEmpty(identity));
+                    self.set('identity', identity);
                 });
             },
             get_login: function () {
@@ -528,6 +522,7 @@
                     } else {
                         app.evt.pub('logout.error');
                     }
+                    self.set('logged_in', false);
                 })
             }
         });
@@ -580,28 +575,73 @@
                 opacity: 0.4;
                 pointer-events: none;
             }
-            .ellipsize {
+            .list-text {
+                width: 100%;
+            }
+            .header {
+                @apply(--justify-end);
+                font-weight: bold;
+            }
+            .name {
                 padding-left: var(--padding);
             }
+            .priority {
+                min-width: 35%;
+                max-width: 35%;
+            }
+            :host[header] .button {
+                visibility: hidden;
+                pointer-events: none;
+            }
         </style>
-        <span class='list-item' readonly$='[[ readonly ]]'>
-            <span class='ellipsize'>[[ text ]]</span>
-            <span class='button button-icon' on-tap='edit'>...</span>
-        </span>
+        <template is='dom-if' if='[[ header ]]'>
+            <span class='list-item' readonly$='[[ !is_editable(value) ]]'>
+                <span class='list-text'>
+                    <span class='header priority'>Priority</span>
+                    <span class='header name'>Name</span>
+                </span>
+                <span class='button button-icon'></span>
+            </span>
+        </template>
+        <template is='dom-if' if='[[ !header ]]'>
+            <span class='list-item' readonly$='[[ !is_editable(value) ]]'>
+                <span class='list-text'>
+                    <template is='dom-if' if='[[ value.priority ]]'>
+                        <span class='header priority'>[[ value.priority ]]</span>
+                    </template>
+                    <span class='ellipsize name'>[[ value.name ]]</span>
+                </span>
+                <span class='button button-icon shadow' on-tap='edit'>...</span>
+            </span>
+        </template>
     </template>
     <script>
         Polymer({
             is: 'nts-list-item',
             properties: {
-                uuid: String,
-                text: String,
-                readonly: Boolean
+                value: {
+                    type: Object,
+                    value: function () { return {}; }
+                },
+                header: {
+                    type: Boolean,
+                    notify: true,
+                    value: false,
+                    reflectToAttribute: true
+                }
             },
             ready: function () {
                 this.title = this.text;
             },
             edit: function () {
                 this.fire('edit');
+            },
+            is_editable: function () {
+                return (
+                    this.value.email || // this should be more specific...
+                    this.value.visibility === 'public' ||
+                    (this.value.owner === app.get_session().id)
+                );
             }
         });
     </script>
@@ -706,9 +746,9 @@
                 </span>
                 <span class='center'>
                     <template is='dom-if' if='{{ is_editable(item) }}'>
-                        <span class='button' on-tap='save'>Save</span>
+                        <span class='button shadow' on-tap='save'>Save</span>
                     </template>
-                    <span class='button' on-tap='dispose'>Close</span>
+                    <span class='button shadow' on-tap='dispose'>Close</span>
                 </span>
             </span>
         </template>
@@ -744,13 +784,6 @@
                 return this.item.type === 'task';
             },
             is_editable: function () {
-                // FIXME: session id is not getting set if
-                // already logged in, need a whoami route
-                // to self-identify
-                // console.log('visibility', this.item.visibility);
-                // console.log('item id', this.item.id);
-                // console.log('owner id', this.item.owner);
-                // console.log('session id', app.get_session().id);
                 if (!this.item) return false;
                 if (this.is_task()) {
                     return (
@@ -775,30 +808,25 @@
                     app.evt.pub('input.error', messages);
                     return;
                 }
-                console.log('saving task', task);
                 if (this.item.id) {
+                    // update
                     app.io.post('/tasks/' + this.item.id, task,
                         function (status, data) {
                             if (status === 200) {
-                                app.evt.pub('refresh');
+                                app.evt.pub('refresh.listview');
                             } else {
-                                app.evt.pub('create.fail', {
-                                    title: 'Task Update Failed',
-                                    message: data
-                                });
+                                new NtsPopup('Task Update Failed', data);
                             }
                         }
                     );
                 } else {
+                    // create
                     app.io.put('/tasks', task,
                         function (status, data) {
                             if (status === 200) {
-                                app.evt.pub('refresh');
+                                app.evt.pub('refresh.listview');
                             } else {
-                                app.evt.pub('create.fail', {
-                                    title: 'Task Creation Failed',
-                                    message: data
-                                });
+                                new NtsPopup('Task Creation Failed', data);
                             }
                         }
                     );
@@ -841,20 +869,21 @@
                 <span class='tab' tabindex='0' on-tap='toggle_type'>Users</span>
             </span>
             <template is='dom-if' if='{{ showing_tasks(type) }}'>
-                <template id='task_list' is='dom-repeat' items='{{ tasks }}' filter='{{ filter_list(criteria) }}' sort='sort_tasks' observe='priority'>
-                    <nts-list-item uuid='[[ item.id ]]' text='[[ item.name ]]' readonly='{{ !is_editable(item.visibility) }}'></nts-list-item>
+                <nts-list-item header></nts-list-item>
+                <template id='task_list' is='dom-repeat' items='{{ tasks }}' filter='{{ filter_list(criteria) }}' sort='sort_tasks'>
+                    <nts-list-item value='[[ item ]]'></nts-list-item>
                 </template>
             </template>
             <template is='dom-if' if='{{ !showing_tasks(type) }}'>
                 <template id='user_list' is='dom-repeat' items='{{ users }}' filter='filter_list' observer='criteria'>
-                    <nts-list-item uuid='[[ item.id ]]' text='[[ item.name ]]'></nts-list-item>
+                    <nts-list-item value='[[ item ]]'></nts-list-item>
                 </template>
             </template>
         </span>
         <template is='dom-if' if='{{ showing_tasks(type) }}'>
             <span class='no-resize center'>
-                <span>New</span>
-                <span class='button button-icon' on-tap='on_create'>+</span>
+                <span class='button-label'>New</span>
+                <span class='button button-icon shadow' on-tap='on_create'>+</span>
             </span>
         </template>
     </template>
@@ -887,15 +916,19 @@
             },
             ready: function () {
                 var self = this;
-                app.evt.sub('login.ok', this.get_items.bind(this));
-                app.evt.sub('logout.ok', this.cancel_get_items.bind(this));
-                app.evt.sub('refresh', function () {
+                app.evt.sub('refresh.session', function () {
+                    if (app.get_session().id) {
+                        self.get_items();
+                    } else {
+                        self.cancel_get_items();
+                    }
+                });
+                app.evt.sub('refresh.listview', function () {
                     self.get_items(true);
                 });
                 app.evt.sub('search', function (criteria) {
                     self.set('criteria', criteria);
                 });
-                this.get_items();
             },
             is_editable: function (visibility) {
                 return visibility === 'public';
@@ -928,9 +961,6 @@
                 app.io.get('/users', null, function (status, data) {
                     if (status === 200) {
                         self.set('users', data);
-                    } else if (status === 401) {
-                        app.evt.pub('login.required');
-                        self.cancel_get_items();
                     } else {
                         self.cancel_get_items();
                     }
@@ -938,9 +968,6 @@
                 app.io.get('/tasks', null, function (status, data) {
                     if (status === 200) {
                         self.set('tasks', data);
-                    } else if (status === 401) {
-                        app.evt.pub('login.required');
-                        self.cancel_get_items();
                     } else {
                         self.cancel_get_items();
                     }
@@ -953,10 +980,8 @@
                 log.debug('canceling item retrieval...');
                 this.cancelAsync(this.get_items_handle);
             },
-            sort_tasks: function () {
-                return function(a, b) {
-                    return a - b;
-                }
+            sort_tasks: function (a, b) {
+                return a.priority - b.priority;
             },
             filter_list: function (item) {
                 if (!this.criteria) return true;
