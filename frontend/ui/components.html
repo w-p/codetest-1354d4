@@ -401,7 +401,7 @@
             <template is='dom-repeat' items='{{ messages }}'>
                 <span class='message'>{{ item }}</span>
             </template>
-            <span class='no-resize'>
+            <span class='no-resize center'>
                 <span class='button shadow' on-tap='dispose' on-keypress='dispose' tabindex='0'>OK</span>
             </span>
         </span>
@@ -814,6 +814,7 @@
                         function (status, data) {
                             if (status === 200) {
                                 app.evt.pub('refresh.listview');
+                                new NtsPopup('Success', 'Your update was saved.');
                             } else {
                                 new NtsPopup('Task Update Failed', data);
                             }
@@ -825,6 +826,7 @@
                         function (status, data) {
                             if (status === 200) {
                                 app.evt.pub('refresh.listview');
+                                new NtsPopup('Success', 'Your task was created.');
                             } else {
                                 new NtsPopup('Task Creation Failed', data);
                             }
@@ -870,12 +872,12 @@
             </span>
             <template is='dom-if' if='{{ showing_tasks(type) }}'>
                 <nts-list-item header></nts-list-item>
-                <template id='task_list' is='dom-repeat' items='{{ tasks }}' filter='{{ filter_list(criteria) }}' sort='sort_tasks'>
+                <template id='task_list' is='dom-repeat' items='{{ tasks }}' filter='{{ filter_list(tasks) }}' sort='sort_tasks'>
                     <nts-list-item value='[[ item ]]'></nts-list-item>
                 </template>
             </template>
             <template is='dom-if' if='{{ !showing_tasks(type) }}'>
-                <template id='user_list' is='dom-repeat' items='{{ users }}' filter='filter_list' observer='criteria'>
+                <template id='user_list' is='dom-repeat' items='{{ users }}' filter='filter_list(tasks)'>
                     <nts-list-item value='[[ item ]]'></nts-list-item>
                 </template>
             </template>
@@ -983,15 +985,21 @@
             sort_tasks: function (a, b) {
                 return a.priority - b.priority;
             },
-            filter_list: function (item) {
-                if (!this.criteria) return true;
-                var self = this;
-                return _.chain(item)
-                    .map(function (v, k) {
-                        return _.includes(v, self.criteria);
-                    })
-                    .some()
-                    .value();
+            filter_list: function (items) {
+                console.log(items);
+                if (_.isEmpty(items)) return true;
+                if (this.type !== 'tasks') return true;
+                return function (item) {
+                    return item.status === 'open';
+                }
+                // need to implement searching with 'criteria'
+                // var self = this;
+                // return _.chain(item)
+                //     .map(function (v, k) {
+                //         return _.includes(v, self.criteria);
+                //     })
+                //     .some()
+                //     .value();
             },
             toggle_type: function (evt) {
                 var active = this.querySelector('.tab[active]');
